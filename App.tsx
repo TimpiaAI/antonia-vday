@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactConfetti from 'react-confetti';
-import { Heart, Gift, Stars } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { Heart, Stars } from 'lucide-react';
 
 // --- Assets ---
 const IMAGES = {
@@ -60,14 +60,62 @@ export default function App() {
   const [noCount, setNoCount] = useState(0);
   const [noButtonPos, setNoButtonPos] = useState({ top: "50%", left: "50%" });
   const [isMoved, setIsMoved] = useState(false);
-  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Handle window resize for Confetti
+  // Autoplay music on page load
   useEffect(() => {
-    const handleResize = () => setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    audioRef.current = new Audio('/baby.mp3');
+    audioRef.current.loop = true;
+    audioRef.current.volume = 0.5;
+
+    const playAudio = () => {
+      audioRef.current?.play().catch(() => {
+        // Browser blocked autoplay, try on first interaction
+        const handleClick = () => {
+          audioRef.current?.play();
+          document.removeEventListener('click', handleClick);
+        };
+        document.addEventListener('click', handleClick);
+      });
+    };
+
+    playAudio();
+
+    return () => {
+      audioRef.current?.pause();
+    };
   }, []);
+
+  // Fire confetti when accepted
+  useEffect(() => {
+    if (accepted) {
+      const duration = 10 * 1000;
+      const animationEnd = Date.now() + duration;
+      const colors = ['#ff69b4', '#ff1493', '#ffb6c1', '#ffffff', '#ff0000'];
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: colors
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: colors
+        });
+
+        if (Date.now() < animationEnd) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
+  }, [accepted]);
 
   // Logic to move the "No" button randomly
   const moveNoButton = () => {
@@ -98,19 +146,6 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-b from-[#ffe4ec] to-[#ffb6c1] flex flex-col items-center justify-center relative overflow-hidden font-sans selection:bg-pink-200">
       <FloatingHearts />
 
-      {/* Confetti Container - Fixed to cover screen */}
-      {accepted && (
-        <div className="fixed inset-0 z-50 pointer-events-none">
-          <ReactConfetti
-            width={windowSize.width}
-            height={windowSize.height}
-            recycle={true}
-            numberOfPieces={500}
-            gravity={0.15}
-            colors={['#ff69b4', '#ff1493', '#ffb6c1', '#ffffff', '#ff0000']}
-          />
-        </div>
-      )}
 
       {accepted ? (
         // --- SCREEN 2: SUCCESS ---
@@ -153,13 +188,9 @@ export default function App() {
             Știam eu că mă iubești 😏❤️
           </p>
 
-          <button 
-            className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-[#ff69b4] font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#ff69b4] hover:bg-[#ff1493] hover:shadow-lg hover:-translate-y-1 cursor-pointer pointer-events-auto z-50"
-            onClick={() => alert("Pregătește-te pentru cea mai frumoasă zi! Te iubesc! 🎁")}
-          >
-             Vino să-ți iei cadoul
-            <Gift className="ml-2 w-6 h-6 group-hover:rotate-12 transition-transform" />
-          </button>
+          <div className="group relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white bg-[#ff69b4] rounded-full">
+             Baba iti pregateste surpriza, mai trebuie sa astepti doar putin 💝
+          </div>
         </div>
       ) : (
         // --- SCREEN 1: QUESTION ---
